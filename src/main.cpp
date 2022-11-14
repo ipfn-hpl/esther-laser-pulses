@@ -46,8 +46,8 @@ void cmd_led_off(SerialCommands* sender) {
 SerialCommand cmd_led_on_("ON", cmd_led_on);
 SerialCommand cmd_led_off_("OFF", cmd_led_off);
 //SerialCommand cmd_datetime_set_("TS", cmd_datetime_set); // requires one argument
-/// Add one_key commands 
-//SerialCommand cmd_print_("p", cmd_print, true);
+/// Add one_key commands
+SerialCommand cmd_ledf_("f", cmd_led_off, true);
 
 
 //delay(1);
@@ -59,7 +59,14 @@ void setup() {
     digitalWrite(LED_BUILTIN, LOW);
     // Start serial port
     Serial.begin(115200);
-    Serial.println("Ola Mundo");
+    serial_commands_.SetDefaultHandler(cmd_unrecognized);
+    serial_commands_.AddCommand(&cmd_led_on_);
+    serial_commands_.AddCommand(&cmd_led_off_);
+    serial_commands_.AddCommand(&cmd_ledf_);
+//    serial_commands_.AddCommand(&cmd_datetime_set_);
+//    serial_commands_.AddCommand(&cmd_print_);
+
+    Serial.println(F("Ola Mundo!"));
 }
 
 void laser_pulse(unsigned long now_us) {
@@ -92,4 +99,5 @@ void laser_off() {
 void loop() {
     unsigned long us = micros();
     laser_pulse(us);
+    serial_commands_.ReadSerial();
 }
