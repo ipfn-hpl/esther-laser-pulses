@@ -7,9 +7,9 @@
 const int button_pin = 2; // PD2
 const int LASER_OUT = 3; // PD3
 // -- Only A0-A5 can be Digital I/O
-const int RED_LED = A5; // A7;
-const int GREEN_LED = A4;
-const int BLUE_LED = A3; // A7;
+const int RED_LED = A4; // A7;
+const int GREEN_LED = A3;
+const int BLUE_LED = A5; // A7;
 
 const int laser_period = 80; // in us
 
@@ -24,7 +24,7 @@ const int laser_period = 80; // in us
 */
 
 bool pulse_laser = true;
-bool redOn = false, greenOn = false, blueOn = false;
+bool redOn = true, greenOn = true, blueOn = true;
 
 //unsigned long nextPtime = 0;
 char serial_command_buffer_[32];
