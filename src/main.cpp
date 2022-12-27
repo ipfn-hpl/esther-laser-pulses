@@ -1,8 +1,24 @@
 // vim: sta:et:sw=4:ts=4:sts=4
 #include <Arduino.h>
+#include "FastLED.h"
 
 // https://github.com/ppedro74/Arduino-SerialCommands
 #include <SerialCommands.h>
+
+// --- LED Strip
+#define LED_STRIP_PIN     SDA
+#define COLOR_ORDER GRB
+#define CHIPSET     WS2811
+#define NUM_LEDS    60
+
+#define BRIGHTNESS  200
+#define FRAMES_PER_SECOND 60
+
+bool gReverseDirection = false;
+
+//CRGB leds[NUM_LEDS];
+CRGBArray<NUM_LEDS> leds;
+uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
 const int button_pin = 2; // PD2
 const int LASER_OUT = 3; // PD3
@@ -90,6 +106,30 @@ SerialCommand cmd_ledf_("f", cmd_led_off, true);
 
 unsigned long nextLtime, nextBtime;
 bool laser_state=true;
+/*
+   void moveDot()
+   {
+   static unsigned posLed =0;
+   leds.fadeToBlackBy(40);
+   posLed = (posLed++)%NUM_LEDS;
+   leds[posLed] += CHSV( gHue, 255, 192);
+
+   }
+   */
+void sinelon()
+{
+    static unsigned pLed =0;
+    // a colored dot sweeping back and forth, with fading trails
+    // void fadeToBlackBy( CRGB* leds, uint16_t num_leds, uint8_t fadeBy)
+    //fadeToBlackBy( leds, NUM_LEDS, 10);
+    // https://github.com/FastLED/FastLED/blob/5eaea812de970393bee4dcd17f9e4d17bf7a9f37/src/lib8tion.h
+    //int pos = beatsin16( 120, 0, NUM_LEDS-1 );
+    //pLed++;
+    if(++pLed >= NUM_LEDS)
+        pLed = 0;
+    leds[pLed] += CHSV( gHue, 255, 192);
+    //leds[pos] += CHSV( gHue, 255, 192);
+}
 
 //delay(1);
 void setup() {
@@ -109,6 +149,10 @@ void setup() {
     pinMode(button_pin, INPUT_PULLUP);
     // Start serial port
     Serial.begin(115200);
+    delay(1000); // sanity delay
+    FastLED.addLeds<CHIPSET, LED_STRIP_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
+    FastLED.setBrightness( BRIGHTNESS );
+
     serial_commands_.SetDefaultHandler(cmd_unrecognized);
     serial_commands_.AddCommand(&cmd_led_on_);
     serial_commands_.AddCommand(&cmd_led_off_);
@@ -120,7 +164,7 @@ void setup() {
     serial_commands_.AddCommand(&cmd_greeno_);
     serial_commands_.AddCommand(&cmd_bluef_);
     serial_commands_.AddCommand(&cmd_blueo_);
-//    serial_commands_.AddCommand(&cmd_print_);
+    //    serial_commands_.AddCommand(&cmd_print_);
 
     Serial.println(F("Ola Mundo! o:pulse ON, f:pulse OFF, R:red ON, r:Red OFF"));
     nextLtime = 0;
@@ -163,18 +207,39 @@ void laser_pulse(unsigned long now_us) {
 }
 
 void read_button(unsigned long now_ms) {
-        if ( now_ms > nextBtime ) {
-            if (!digitalRead(button_pin)){
-                pulse_laser = not pulse_laser;
-                digitalWrite(LED_BUILTIN, pulse_laser);
-                nextBtime += 500;  // in millis
-            }
+    if ( now_ms > nextBtime ) {
+        if (!digitalRead(button_pin)){
+            pulse_laser = not pulse_laser;
+            digitalWrite(LED_BUILTIN, pulse_laser);
+            nextBtime += 500;  // in millis
         }
+    }
 
+}
+void waveStrip(unsigned long now_us){
+    static unsigned long nextStime = 0;
+    if ( now_us > nextStime ) {
+        nextStime = now_us + 1000;  // in micros
+        leds.fadeToBlackBy(80);
+        if (pulse_laser) {
+            sinelon();
+            //moveDot();
+            // send the 'leds' array out to the actual LED strip
+            // insert a delay to keep the framerate modest
+            //FastLED.delay(20);
+
+            // do some periodic updates
+            //EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
+            //  EVERY_N_SECONDS( 10 ) { nextPattern(); } // change patterns periodically
+        }
+        FastLED.show();
+
+    }
 }
 void loop() {
     unsigned long us = micros();
     laser_pulse(us);
+    waveStrip(us);
     unsigned long ms = millis();
     read_button(ms);
     serial_commands_.ReadSerial();
